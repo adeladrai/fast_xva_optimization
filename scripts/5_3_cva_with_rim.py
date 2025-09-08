@@ -25,7 +25,7 @@ from sklearn.metrics import mean_absolute_error
 from xva_core import (
     Timer, banner, savefig_both, print_table, relerr, fmt_pm_bps, trapz_weights,
     fair_strike_and_nominal, precompute_weights, f_func_vec, f_func_scalar,
-    Shat_exact_cpu, S_exact_cpu, select_device, seed_all
+    Shat_exact_cpu, S_exact_cpu, select_device, seed_all, pinball
 )
 
 # ----------------------------- Params -----------------------------
@@ -70,13 +70,6 @@ def X_call_samples(t: float, S_t: float, n: int, r: float, sigma: float, delta: 
     c_td = call_bs_np(t + delta, S_td, T, K, r, sigma)
     return beta_td * c_td - beta_t * c_t
 
-def pinball(yhat, y, q):
-    e = y - yhat
-    return torch.mean(torch.maximum(q * e, (q - 1) * e))
-
-def pinball_vec(yhat, y, q):
-    e = y - yhat
-    return torch.mean(torch.maximum(q * e, (q - 1) * e))
 
 def _ppf_torch(u: torch.Tensor) -> torch.Tensor:
     return math.sqrt(2.0) * torch.erfinv(2.0 * u - 1.0)

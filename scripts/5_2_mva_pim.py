@@ -23,7 +23,7 @@ from sklearn.metrics import mean_absolute_error
 from xva_core import (
     Timer, banner, savefig_both, print_table, relerr, fmt_pm_bps, trapz_weights,
     fair_strike_and_nominal, precompute_weights, f_func_vec, f_func_scalar,
-    Shat_exact_cpu, S_exact_cpu, call_bs_np, pinball, pinball_vec
+    Shat_exact_cpu, S_exact_cpu, call_bs_np, pinball
 )
 
 plt.rcParams["figure.figsize"] = (15, 5)
@@ -300,7 +300,7 @@ def main():
         for _ in range(EPOCHS_POLY):
             opt_p.zero_grad()
             yhat = Xp @ w_poly
-            loss = pinball_vec(yhat, y_call_q, a_conf)
+            loss = pinball(yhat, y_call_q, a_conf)
             loss.backward()
             opt_p.step()
     with torch.no_grad():
@@ -322,7 +322,7 @@ def main():
         for _ in range(EPOCHS_NN):
             opt_mlp.zero_grad()
             yhat = mlp(X_nn)
-            loss = pinball_vec(yhat, yq_t, a_conf)
+            loss = pinball(yhat, yq_t, a_conf)
             loss.backward()
             opt_mlp.step()
     with torch.no_grad():
@@ -644,7 +644,7 @@ def main():
             yhat = Nom_t[t_idx] * (1.0 - torch.exp(theta))
 
             opt.zero_grad()
-            loss = pinball_vec(yhat, Y_tilde, a_conf_batch)
+            loss = pinball(yhat, Y_tilde, a_conf_batch)
             pen = 5e-4 * torch.relu(theta_nodes[:, :-1] - theta_nodes[:, 1:]).mean()
             (loss + pen).backward()
             torch.nn.utils.clip_grad_norm_([U], 1.0)

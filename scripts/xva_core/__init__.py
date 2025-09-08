@@ -11,4 +11,4 @@ from .stochastic import (
     S_exact_cpu, draw_U, gap_LHS_MC_gpu, call_gap_gain, call_gap_loss
 )
 from .black_scholes import call_bs_np, call_bs_torch
-from .losses import pinball, pinball_vec
+from .losses import pinball
