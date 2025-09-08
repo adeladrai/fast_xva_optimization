@@ -22,7 +22,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.metrics import mean_absolute_error
 
-# -------- shared core --------
+# -------- shared core --------the
 from xva_core import (
     Timer, banner, savefig_both, print_table, relerr, fmt_pm_bps, trapz_weights,
     fair_strike_and_nominal, precompute_weights, f_func_vec, f_func_scalar,
@@ -525,10 +525,10 @@ def main():
     # CALL summary table (reference = Nested MC)
     call_ref = CVA_call_nested
     call_rows = [
-        ["Nested MC (ref)",        fmt_pm(swap_to_bps(CVA_call_nested * 1.0), swap_to_bps(se_call_nested * 1.0)), f"{swap_to_bps(se_call_nested):.4f} bps", "-"],  # using same fmt on S0-normalized below
-        ["Twin MC",                fmt_pm(swap_to_bps(CVA_call_twin   * 1.0), swap_to_bps(se_call_twin   * 1.0)), f"{swap_to_bps(se_call_twin):.4f} bps",   f"{relerr(CVA_call_twin, call_ref):.2%}"],
-        ["Polynomial model (deg-2)", f"{(10000.0 * (CVA_call_poly / p.S0)):.4f} bps", "-", f"{relerr(CVA_call_poly, call_ref):.2%}"],
-        [f"Neural Network (2×32×1, epochs={EPOCHS_Q4_NN})", f"{(10000.0 * (CVA_call_nn / p.S0)):.4f} bps",   "-", f"{relerr(CVA_call_nn,   call_ref):.2%}"],
+        ["Nested MC (ref)",        fmt_pm(call_to_bps(CVA_call_nested * 1.0), call_to_bps(se_call_nested * 1.0)), f"{call_to_bps(se_call_nested):.4f} bps", "-"],  # using same fmt on S0-normalized below
+        ["Twin MC",                fmt_pm(call_to_bps(CVA_call_twin   * 1.0), call_to_bps(se_call_twin   * 1.0)), f"{call_to_bps(se_call_twin):.4f} bps",   f"{relerr(CVA_call_twin, call_ref):.2%}"],
+        ["Polynomial model (deg-2)", f"{call_to_bps(CVA_call_poly):.4f} bps", "-", f"{relerr(CVA_call_poly, call_ref):.2%}"],
+        [f"Neural Network (2×32×1, epochs={EPOCHS_Q4_NN})", f"{call_to_bps(CVA_call_nn):.4f} bps",   "-", f"{relerr(CVA_call_nn,   call_ref):.2%}"],
     ]
     print("\nATM CALL (non-linear exposure) - CVA₀ in bps of S0")
     print_table(call_rows, header=["Method", "CVA₀ (bps)", "StdErr (bps)", "RelErr vs Ref"])
