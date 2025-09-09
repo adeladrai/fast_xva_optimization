@@ -7,7 +7,7 @@
 ## Repository layout
 
 ```
-xva-project/
+fast_xva_optimization/
 ├─ README.md
 ├─ requirements.txt
 ├─ scripts/
