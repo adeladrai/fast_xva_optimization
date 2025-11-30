@@ -124,5 +124,11 @@ def swap_to_bps(x: float) -> float:
 
 
 def call_to_bps(x: float, S0: float) -> float:
-    """Convert call value to basis points (bps) per S0: 10,000 × (value / S0)."""
+    """Convert call value to basis points (bps) per S0: 10,000 × (value / S0).
+    
+    Raises:
+        ValueError: If S0 is zero.
+    """
+    if S0 == 0:
+        raise ValueError("S0 cannot be zero")
     return 10000.0 * (x / S0)
