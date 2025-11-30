@@ -1,7 +1,7 @@
 # Re-export the most used symbols for convenience
 from .common import (
     Timer, banner, savefig_both, print_table, relerr, rmse, fmt_pm_bps,
-    trapz_weights, seed_all, select_device
+    trapz_weights, seed_all, select_device, Params, swap_to_bps, call_to_bps
 )
 from .products import (
     fair_strike_and_nominal, precompute_weights, f_func_vec, f_func_scalar

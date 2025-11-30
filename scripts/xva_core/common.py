@@ -1,4 +1,5 @@
 import os, math
+from dataclasses import dataclass
 from typing import Dict, Iterable, List, Sequence
 import numpy as np
 import matplotlib.pyplot as plt
@@ -11,6 +12,20 @@ plt.rcParams["figure.figsize"] = (15, 5)
 plt.rcParams["figure.dpi"] = 120
 plt.rcParams["pdf.fonttype"] = 42
 plt.rcParams["ps.fonttype"] = 42
+
+
+@dataclass
+class Params:
+    """Common parameters used across XVA scripts."""
+    r: float = 0.02
+    kappa: float = 0.12
+    sigma: float = 0.20
+    S0: float = 100.0
+    T: float = 5.0
+    h: float = 0.25
+    delta: float = 1.0 / 52.0
+    gamma1: float = 0.01  # default intensity
+    gamma_fund: float = 0.01  # funding intensity (used in MVA)
 
 class Timer:
     def __init__(self, device: torch.device | None = None, echo: bool = True):
@@ -101,3 +116,13 @@ def select_device(mode: str = "auto") -> torch.device:
     if mode == "cuda":
         return torch.device("cuda" if torch.cuda.is_available() else "cpu")
     return torch.device("cpu")
+
+
+def swap_to_bps(x: float) -> float:
+    """Convert swap value to basis points (bps) on the SAME calculated nominal: 10,000 × value."""
+    return 10000.0 * x
+
+
+def call_to_bps(x: float, S0: float) -> float:
+    """Convert call value to basis points (bps) per S0: 10,000 × (value / S0)."""
+    return 10000.0 * (x / S0)
