@@ -7,7 +7,6 @@ Shared utilities imported from xva_core.
 """
 
 import os, math, argparse
-from dataclasses import dataclass
 from typing import Tuple, Dict
 
 import numpy as np
@@ -21,9 +20,9 @@ from sklearn.isotonic import IsotonicRegression
 from sklearn.metrics import mean_absolute_error
 
 from xva_core import (
-    Timer, banner, savefig_both, print_table, relerr, fmt_pm_bps, trapz_weights,
+    Timer, banner, savefig_both, print_table, relerr, rmse, fmt_pm_bps, trapz_weights,
     fair_strike_and_nominal, precompute_weights, f_func_vec, f_func_scalar,
-    Shat_exact_cpu, S_exact_cpu, call_bs_np, pinball
+    Shat_exact_cpu, S_exact_cpu, call_bs_np, pinball, Params, swap_to_bps, call_to_bps
 )
 
 plt.rcParams["figure.figsize"] = (15, 5)
@@ -31,21 +30,6 @@ plt.rcParams["figure.dpi"] = 120
 plt.rcParams["pdf.fonttype"] = 42
 plt.rcParams["ps.fonttype"] = 42
 np.set_printoptions(precision=6, suppress=True)
-
-def rmse(a: np.ndarray, b: np.ndarray) -> float:
-    return float(np.sqrt(np.mean((np.asarray(a) - np.asarray(b)) ** 2)))
-
-@dataclass
-class Params:
-    r: float = 0.02
-    kappa: float = 0.12
-    sigma: float = 0.20
-    S0: float = 100.0
-    T: float = 5.0
-    h: float = 0.25
-    delta: float = 1.0 / 52.0
-    gamma1: float = 0.01
-    gamma_fund: float = 0.01
 
 # Explicit α(t; •) for PIM
 def B_conf_vec(t_arr: np.ndarray, a_conf: float, f_func_handle, sigma: float, delta: float) -> np.ndarray:
@@ -127,14 +111,6 @@ def main():
     weights, weights_suffix = precompute_weights(p.r, p.kappa, p.h, payment_times)
     def f_func_handle(t_arr):
         return f_func_vec(t_arr, payment_times, weights_suffix, p.delta)
-
-    # unit converters for final print
-    def swap_to_bps(x: float) -> float:
-        """bps on the SAME (calculated) swap nominal: 10,000 × MVA₀ (no /Nom rescaling)."""
-        return 10000.0 * x
-    def call_to_bps(x: float) -> float:
-        """bps per S0 for ATM call."""
-        return 10000.0 * (x / p.S0)
 
     # Q1
     banner("Q1 - Proofs (Lemma 3.1 and Proposition 3.1)")
@@ -536,10 +512,10 @@ def main():
     # CALL summary (ref = Nested MC)
     call_ref = MVA_call_nested
     call_rows = [
-        ["Nested MC (ref)",       fmt_pm_bps(call_to_bps(MVA_call_nested), call_to_bps(se_call_nested)), f"{call_to_bps(se_call_nested):.4f} bps", "-"],
-        ["Twin MC",               fmt_pm_bps(call_to_bps(MVA_call_twin),   call_to_bps(se_call_twin)),   f"{call_to_bps(se_call_twin):.4f} bps",   f"{relerr(MVA_call_twin, call_ref):.2%}"],
-        ["Polynomial (deg-3)", f"{call_to_bps(MVA_call_poly):.4f} bps", "-", f"{relerr(MVA_call_poly, call_ref):.2%}"],
-        [f"Neural Network (2×64×1, epochs={EPOCHS_NN})",            f"{call_to_bps(MVA_call_nn):.4f} bps",   "-", f"{relerr(MVA_call_nn,   call_ref):.2%}"],
+        ["Nested MC (ref)",       fmt_pm_bps(call_to_bps(MVA_call_nested, p.S0), call_to_bps(se_call_nested, p.S0)), f"{call_to_bps(se_call_nested, p.S0):.4f} bps", "-"],
+        ["Twin MC",               fmt_pm_bps(call_to_bps(MVA_call_twin, p.S0),   call_to_bps(se_call_twin, p.S0)),   f"{call_to_bps(se_call_twin, p.S0):.4f} bps",   f"{relerr(MVA_call_twin, call_ref):.2%}"],
+        ["Polynomial (deg-3)", f"{call_to_bps(MVA_call_poly, p.S0):.4f} bps", "-", f"{relerr(MVA_call_poly, call_ref):.2%}"],
+        [f"Neural Network (2×64×1, epochs={EPOCHS_NN})",            f"{call_to_bps(MVA_call_nn, p.S0):.4f} bps",   "-", f"{relerr(MVA_call_nn,   call_ref):.2%}"],
     ]
     print("\nATM CALL (non-linear exposure) - MVA₀ in bps of S0")
     print_table(call_rows, header=["Method", "MVA₀ (bps)", "StdErr (bps)", "RelErr vs Ref"])

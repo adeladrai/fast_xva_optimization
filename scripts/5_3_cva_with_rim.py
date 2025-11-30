@@ -8,7 +8,6 @@
 """
 
 import os, math, argparse
-from dataclasses import dataclass
 from typing import Tuple, Dict
 
 import numpy as np
@@ -25,26 +24,11 @@ from sklearn.metrics import mean_absolute_error
 from xva_core import (
     Timer, banner, savefig_both, print_table, relerr, fmt_pm_bps, trapz_weights,
     fair_strike_and_nominal, precompute_weights, f_func_vec, f_func_scalar,
-    Shat_exact_cpu, S_exact_cpu, select_device, seed_all, pinball
+    Shat_exact_cpu, S_exact_cpu, select_device, seed_all, pinball,
+    draw_U, call_bs_np, Params, swap_to_bps, call_to_bps
 )
 
-# ----------------------------- Params -----------------------------
-@dataclass
-class Params:
-    r: float = 0.02
-    kappa: float = 0.12
-    sigma: float = 0.20
-    S0: float = 100.0
-    T: float = 5.0
-    h: float = 0.25
-    delta: float = 1.0/52.0
-    gamma1: float = 0.01
-
 # ----------------------------- Helpers (script-specific) -----------------------------
-def draw_U(n: int, sigma: float, delta: float) -> np.ndarray:
-    Z = np.random.normal(size=n)
-    return np.exp(-0.5 * sigma**2 * delta + sigma * np.sqrt(delta) * Z) - 1.0
-
 def C_explicit_noNom_noS(t_arr, a_conf: float, sigma: float, delta: float, f_func_handle):
     """
     α_C/Nom/Ŝ_t = f(t) * E[(U - q_a)^+], where U = e^{σ√δ Z - ½σ²δ} - 1.
@@ -54,13 +38,6 @@ def C_explicit_noNom_noS(t_arr, a_conf: float, sigma: float, delta: float, f_fun
     z = norm.ppf(a_conf)
     term = np.exp(sigma*np.sqrt(delta)*norm.pdf(z)/(1-a_conf)) - np.exp(sigma*np.sqrt(delta)*z)
     return (1-a_conf) * f_func_handle(t_arr) * np.exp(-0.5*sigma**2*delta) * term
-
-def call_bs_np(t: float, S_t, T: float, K: float, r: float, sigma: float):
-    tau = np.maximum(T - t, 1e-12)
-    S_t = np.asarray(S_t, dtype=float); tau = np.asarray(tau, dtype=float)
-    d1 = (np.log(S_t / K) + (r + 0.5 * sigma**2) * tau) / (sigma * np.sqrt(tau))
-    d2 = d1 - sigma * np.sqrt(tau)
-    return S_t * norm.cdf(d1) - K * np.exp(-r * tau) * norm.cdf(d2)
 
 def X_call_samples(t: float, S_t: float, n: int, r: float, sigma: float, delta: float, T: float, K: float):
     Z = np.random.normal(size=n)
@@ -119,10 +96,6 @@ def main():
 
     t_grid = np.arange(0.0, p.T + 1e-12, p.delta)
     Shat_t = Shat_exact_cpu(t_grid, p.S0, p.sigma)
-
-    # Converters
-    def swap_to_bps(x: float) -> float: return 10000.0 * x
-    def call_to_bps(x: float) -> float: return 10000.0 * (x / p.S0)
 
     # ---------------- Q1 ----------------
     banner("Q1 - Proofs (Lemma 4.1 & Prop. 4.1)")
@@ -458,10 +431,10 @@ def main():
 
     call_ref = CVA_rim_call_nested
     call_rows = [
-        ["Nested MC (ref)", fmt_pm_bps(call_to_bps(CVA_rim_call_nested), call_to_bps(se_call_nested)), f"{call_to_bps(se_call_nested):.4f} bps", "-"],
-        ["Twin MC",         fmt_pm_bps(call_to_bps(CVA_rim_call_twin),   call_to_bps(se_call_twin)),   f"{call_to_bps(se_call_twin):.4f} bps",   f"{relerr(CVA_rim_call_twin, call_ref):.2%}"],
-        ["Polynomial (deg-2, scaled)", f"{call_to_bps(CVA_rim_call_poly):.4f} bps", "-", f"{relerr(CVA_rim_call_poly, call_ref):.2%}"],
-        [f"Neural Network (2×32×1, epochs={EPOCHS_NN})", f"{call_to_bps(CVA_rim_call_nn):.4f} bps", "-", f"{relerr(CVA_rim_call_nn, call_ref):.2%}"],
+        ["Nested MC (ref)", fmt_pm_bps(call_to_bps(CVA_rim_call_nested, p.S0), call_to_bps(se_call_nested, p.S0)), f"{call_to_bps(se_call_nested, p.S0):.4f} bps", "-"],
+        ["Twin MC",         fmt_pm_bps(call_to_bps(CVA_rim_call_twin, p.S0),   call_to_bps(se_call_twin, p.S0)),   f"{call_to_bps(se_call_twin, p.S0):.4f} bps",   f"{relerr(CVA_rim_call_twin, call_ref):.2%}"],
+        ["Polynomial (deg-2, scaled)", f"{call_to_bps(CVA_rim_call_poly, p.S0):.4f} bps", "-", f"{relerr(CVA_rim_call_poly, call_ref):.2%}"],
+        [f"Neural Network (2×32×1, epochs={EPOCHS_NN})", f"{call_to_bps(CVA_rim_call_nn, p.S0):.4f} bps", "-", f"{relerr(CVA_rim_call_nn, call_ref):.2%}"],
     ]
     print("\nATM CALL (non-linear exposure) - CVA⁽RIM⁾₀ in bps of S0")
     print_table(call_rows, header=["Method", "CVA⁽RIM⁾₀ (bps)", "StdErr (bps)", "RelErr vs Ref"])

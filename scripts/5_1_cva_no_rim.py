@@ -6,7 +6,6 @@
 """
 
 import os, math, argparse
-from dataclasses import dataclass
 from typing import Tuple, Dict
 
 import numpy as np
@@ -27,25 +26,13 @@ from xva_core import (
     Timer, banner, savefig_both, print_table, relerr, fmt_pm_bps, trapz_weights,
     fair_strike_and_nominal, precompute_weights, f_func_vec, f_func_scalar,
     Shat_exact_gpu, Shat_step_delta_gpu, Shat_exact_cpu, S_exact_cpu, gap_LHS_MC_gpu,
-    call_bs_torch
+    call_bs_torch, Params, swap_to_bps, call_to_bps
 )
 
 plt.rcParams["figure.figsize"] = (15, 5)
 plt.rcParams["figure.dpi"] = 120
 plt.rcParams["pdf.fonttype"] = 42
 plt.rcParams["ps.fonttype"] = 42
-
-# ------------------------ Params ------------------------
-@dataclass
-class Params:
-    r: float = 0.02
-    kappa: float = 0.12
-    sigma: float = 0.20
-    S0: float = 100.0
-    T: float = 5.0
-    h: float = 0.25
-    delta: float = 1.0 / 52.0
-    gamma1: float = 0.01  # default intensity
 
 # ------------------------ Call positive gap (wrapper) ------------------------
 def call_gap_pos_mc_gpu(t: float, S_t: float, T: float, K: float, r: float, sigma: float, delta: float,
@@ -144,15 +131,6 @@ def main():
     def A_func_vec(t_arr: np.ndarray) -> np.ndarray:
         # A(t) = f(t) * const_black
         return f_func_vec(t_arr, payment_times, weights_suffix, p.delta) * const_black
-
-    # --- unit converters to bps ---
-    def swap_to_bps(x: float) -> float:
-        """bps of the SAME (calculated) swap nominal: 10,000 × CVA₀ (no /Nom rescaling)."""
-        return 10000.0 * x
-
-    def call_to_bps(x: float) -> float:
-        """bps of underlying notional S0 for ATM call."""
-        return 10000.0 * (x / p.S0)
 
     # Convenience wrapper for +/- value ± stderr formatting
     def fmt_pm(val_bps: float, se_bps: float) -> str:
@@ -525,10 +503,10 @@ def main():
     # CALL summary table (reference = Nested MC)
     call_ref = CVA_call_nested
     call_rows = [
-        ["Nested MC (ref)",        fmt_pm(call_to_bps(CVA_call_nested * 1.0), call_to_bps(se_call_nested * 1.0)), f"{call_to_bps(se_call_nested):.4f} bps", "-"],  # using same fmt on S0-normalized below
-        ["Twin MC",                fmt_pm(call_to_bps(CVA_call_twin   * 1.0), call_to_bps(se_call_twin   * 1.0)), f"{call_to_bps(se_call_twin):.4f} bps",   f"{relerr(CVA_call_twin, call_ref):.2%}"],
-        ["Polynomial model (deg-2)", f"{call_to_bps(CVA_call_poly):.4f} bps", "-", f"{relerr(CVA_call_poly, call_ref):.2%}"],
-        [f"Neural Network (2×32×1, epochs={EPOCHS_Q4_NN})", f"{call_to_bps(CVA_call_nn):.4f} bps",   "-", f"{relerr(CVA_call_nn,   call_ref):.2%}"],
+        ["Nested MC (ref)",        fmt_pm(call_to_bps(CVA_call_nested * 1.0, p.S0), call_to_bps(se_call_nested * 1.0, p.S0)), f"{call_to_bps(se_call_nested, p.S0):.4f} bps", "-"],  # using same fmt on S0-normalized below
+        ["Twin MC",                fmt_pm(call_to_bps(CVA_call_twin   * 1.0, p.S0), call_to_bps(se_call_twin   * 1.0, p.S0)), f"{call_to_bps(se_call_twin, p.S0):.4f} bps",   f"{relerr(CVA_call_twin, call_ref):.2%}"],
+        ["Polynomial model (deg-2)", f"{call_to_bps(CVA_call_poly, p.S0):.4f} bps", "-", f"{relerr(CVA_call_poly, call_ref):.2%}"],
+        [f"Neural Network (2×32×1, epochs={EPOCHS_Q4_NN})", f"{call_to_bps(CVA_call_nn, p.S0):.4f} bps",   "-", f"{relerr(CVA_call_nn,   call_ref):.2%}"],
     ]
     print("\nATM CALL (non-linear exposure) - CVA₀ in bps of S0")
     print_table(call_rows, header=["Method", "CVA₀ (bps)", "StdErr (bps)", "RelErr vs Ref"])
